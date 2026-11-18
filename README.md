@@ -28,6 +28,10 @@ Es la colección hermana de [obs-retro-tv](https://github.com/hjmeneses/obs-retr
 
 ## Glitch digital (`glitch.shader`)
 
+![Escena limpia, glitch pequeño, limpia otra vez y glitch completo](images/glitch.gif)
+
+<sub>Simulación aproximada del shader en una escena de ejemplo: un glitch pequeño y luego uno completo. En vivo salen al azar cada 10–30 s y cada 30–60 s. / Approximate simulation: a small glitch, then a full one.</sub>
+
 Aplícalo a la **escena** completa (o a una fuente, si solo quieres que falle esa).
 
 | Tipo | Cada cuánto | Qué pasa |
