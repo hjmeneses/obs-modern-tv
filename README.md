@@ -69,9 +69,11 @@ Shaders for **OBS Studio** with today's TV and streaming effects: broken digital
 
 | File | What it does |
 |---|---|
-| `glitch.shader` | Your scene glitches on its own, as if the stream were being hacked: small glitches every 10–30 s and a full-scene glitch every 30–60 s, at random times. |
+| `en/glitch.shader` | Your scene glitches on its own, as if the stream were being hacked: small glitches every 10–30 s and a full-scene glitch every 30–60 s, at random times. |
 
-Add it to a scene with **Filters → + → User-defined shader → Load shader text from file**. Parameter labels are in Spanish. Set *Modo* to one of the *Probar* options to loop a glitch while you tune it. The gap between two glitches always stays within the configured range, however long you are live. Use a different *Semilla* (seed) on each scene so they don't all glitch together.
+The English version, with English labels and comments, is in the [`en/`](en) folder; the Spanish original is `glitch.shader` in the root.
+
+Add it to a scene with **Filters → + → User-defined shader → Load shader text from file**. Set *Mode* to one of the *Test* options to loop a glitch while you tune it. The gap between two glitches always stays within the configured range, however long you are live. Use a different *Seed* on each scene so they don't all glitch together.
 
 ## License
 
