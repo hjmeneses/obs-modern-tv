@@ -67,9 +67,8 @@ Es una secuencia (Progreso de 0 a 100, o en bucle). La luz recorre el contorno d
 
 | Parámetro | Efecto |
 |---|---|
-| Modo | *Barrido*: la luz cruza en línea recta. *Giro*: da una vuelta alrededor del centro. *Eléctrico*: tramos que se encienden y apagan al azar |
-| Dirección | Ángulo del barrido (0 = de izquierda a derecha, 90 = de arriba abajo) o punto de arranque del giro |
-| Giro: velocidad pareja | La luz recorre el borde a la misma velocidad: cerca del centro gira más rápido. Apagado, gira con velocidad angular constante, como un radar (en un título ancho se arrastra en el centro y vuela en los extremos) |
+| Modo | *Barrido*: la luz cruza en línea recta. *Giro*: da una vuelta alrededor del centro, a velocidad pareja por el borde (cerca del centro gira más rápido). *Eléctrico*: tramos que se encienden y apagan al azar. *Radar*: una vuelta con velocidad angular constante (en un título ancho se demora en el centro y vuela en los extremos) |
+| Dirección | Ángulo del barrido (0 = de izquierda a derecha, 90 = de arriba abajo) o punto de arranque del giro o del radar |
 | Fuente | Aparece detrás del trazo, siempre visible u oculta (solo el trazo) |
 | Contorno de | Transparencia, o brillo para logos sobre fondo negro |
 | Color del núcleo / del resplandor | El centro de la línea y el halo |
@@ -99,7 +98,7 @@ Shaders for **OBS Studio** with today's TV and streaming effects: broken digital
 
 The English versions, with English labels and comments, are in the [`en/`](en) folder; the Spanish originals are in the root.
 
-**Light trace**: apply it to a text, logo or image with transparency, and give the glow room with the filter's *Expand* options. It is a sequence (Progress 0–100, or loop): the light runs along the outline over 0–70, the outline stays lit until 80, then fades. Modes: *Sweep* (straight line), *Spin* (once around the centre) and *Electric* (random flickering stretches). The source can appear behind the light, stay visible, or be hidden.
+**Light trace**: apply it to a text, logo or image with transparency, and give the glow room with the filter's *Expand* options. It is a sequence (Progress 0–100, or loop): the light runs along the outline over 0–70, the outline stays lit until 80, then fades. Modes: *Sweep* (straight line), *Spin* (once around the centre at an even speed along the edge), *Electric* (random flickering stretches) and *Radar* (once around at a constant angular speed). The source can appear behind the light, stay visible, or be hidden.
 
 Add it to a scene with **Filters → + → User-defined shader → Load shader text from file**. Set *Mode* to one of the *Test* options to loop a glitch while you tune it. The gap between two glitches always stays within the configured range, however long you are live. Use a different *Seed* on each scene so they don't all glitch together.
 

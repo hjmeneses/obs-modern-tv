@@ -6,8 +6,10 @@
 // Modos:
 //   Barrido   la luz cruza la fuente en línea recta (izquierda a derecha por defecto) y
 //             enciende el contorno a su paso, dejando una estela
-//   Giro      igual, pero la luz da una vuelta alrededor del centro de la fuente
+//   Giro      igual, pero la luz da una vuelta alrededor del centro de la fuente, a velocidad
+//             pareja por el borde
 //   Eléctrico tramos del contorno que se encienden y apagan al azar, como neón inestable
+//   Radar     una vuelta con velocidad angular constante, como la aguja de un radar
 //
 // Secuencia (Progreso 0 → 100):
 //   0–70   La luz recorre el contorno (en Eléctrico, se enciende en 0–20)
@@ -42,6 +44,8 @@ uniform int mode<
     string option_1_label = "Giro: la luz da una vuelta alrededor del centro";
     int    option_2_value = 2;
     string option_2_label = "Electrico: tramos que se encienden y apagan";
+    int    option_3_value = 3;
+    string option_3_label = "Radar: gira con velocidad angular constante";
 > = 0;
 
 uniform float sweep_angle<
@@ -49,10 +53,6 @@ uniform float sweep_angle<
     string widget_type = "slider";
     float minimum = -180.0; float maximum = 180.0; float step = 1.0;
 > = 0.0;
-
-uniform bool spin_even<
-    string label = "Giro: velocidad pareja (si no, angular tipo radar)";
-> = true;
 
 uniform int source_mode<
     string label = "Fuente";
@@ -275,10 +275,11 @@ float4 mainImage(VertData v_in) : TARGET
     float s;
     if (mode == 1)
     {
-        if (spin_even)
-            s = frac(perimeterPos(P, uv_size * 0.5) - perimeterPos(float2(cos(ang), sin(ang)), uv_size * 0.5) + 1.0);
-        else
-            s = frac(atan2(P.y, P.x) / 6.2831853 - sweep_angle / 360.0 + 1.0);
+        s = frac(perimeterPos(P, uv_size * 0.5) - perimeterPos(float2(cos(ang), sin(ang)), uv_size * 0.5) + 1.0);
+    }
+    else if (mode == 3)
+    {
+        s = frac(atan2(P.y, P.x) / 6.2831853 - sweep_angle / 360.0 + 1.0);
     }
     else
     {

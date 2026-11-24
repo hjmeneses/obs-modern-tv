@@ -6,8 +6,10 @@
 // Modes:
 //   Sweep     the light crosses the source in a straight line (left to right by default) and
 //             lights the outline as it passes, leaving a trail
-//   Spin      the same, but the light goes once around the centre of the source
+//   Spin      the same, but the light goes once around the centre of the source, at an even
+//             speed along the edge
 //   Electric  stretches of the outline switch on and off at random, like flickering neon
+//   Radar     once around at a constant angular speed, like a radar sweep
 //
 // Sequence (Progress 0 -> 100):
 //   0-70   The light runs along the outline (in Electric it switches on over 0-20)
@@ -42,6 +44,8 @@ uniform int mode<
     string option_1_label = "Spin: the light goes once around the centre";
     int    option_2_value = 2;
     string option_2_label = "Electric: stretches that switch on and off";
+    int    option_3_value = 3;
+    string option_3_label = "Radar: turns at a constant angular speed";
 > = 0;
 
 uniform float sweep_angle<
@@ -49,10 +53,6 @@ uniform float sweep_angle<
     string widget_type = "slider";
     float minimum = -180.0; float maximum = 180.0; float step = 1.0;
 > = 0.0;
-
-uniform bool spin_even<
-    string label = "Spin: even speed (otherwise angular, like a radar)";
-> = true;
 
 uniform int source_mode<
     string label = "Source";
@@ -275,10 +275,11 @@ float4 mainImage(VertData v_in) : TARGET
     float s;
     if (mode == 1)
     {
-        if (spin_even)
-            s = frac(perimeterPos(P, uv_size * 0.5) - perimeterPos(float2(cos(ang), sin(ang)), uv_size * 0.5) + 1.0);
-        else
-            s = frac(atan2(P.y, P.x) / 6.2831853 - sweep_angle / 360.0 + 1.0);
+        s = frac(perimeterPos(P, uv_size * 0.5) - perimeterPos(float2(cos(ang), sin(ang)), uv_size * 0.5) + 1.0);
+    }
+    else if (mode == 3)
+    {
+        s = frac(atan2(P.y, P.x) / 6.2831853 - sweep_angle / 360.0 + 1.0);
     }
     else
     {
