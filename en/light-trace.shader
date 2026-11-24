@@ -6,8 +6,8 @@
 // Modes:
 //   Sweep     the light crosses the source in a straight line (left to right by default) and
 //             lights the outline as it passes, leaving a trail
-//   Spin      the same, but the light goes once around the centre of the source, at an even
-//             speed along the edge
+//   Spin      the light goes around the outside of the title, like on a track: along the top,
+//             down one end, back along the bottom and up the other, at an even speed
 //   Electric  stretches of the outline switch on and off at random, like flickering neon
 //   Radar     once around at a constant angular speed, like a radar sweep
 //
@@ -41,7 +41,7 @@ uniform int mode<
     int    option_0_value = 0;
     string option_0_label = "Sweep: the light crosses the source in a straight line";
     int    option_1_value = 1;
-    string option_1_label = "Spin: the light goes once around the centre";
+    string option_1_label = "Spin: the light goes around the outside of the title";
     int    option_2_value = 2;
     string option_2_label = "Electric: stretches that switch on and off";
     int    option_3_value = 3;
@@ -186,33 +186,6 @@ float fbm(float2 x)
     return 0.65 * vnoise(x) + 0.35 * vnoise(x * 2.13 + 5.2);
 }
 
-// Position (0 -> 1) along the perimeter of the source rectangle where the ray from the centre
-// through P crosses it, turning the same way as atan2. The light then runs along the edge at an
-// even speed: it turns faster near the centre and slower at the ends.
-float perimeterPos(float2 P, float2 hs)
-{
-    float a = hs.x;
-    float b = hs.y;
-    float L;
-    if (abs(P.x) * b >= abs(P.y) * a)
-    {
-        float y = P.y * a / max(abs(P.x), 0.00001);
-        if (P.x >= 0.0)
-            L = y >= 0.0 ? y : 4.0 * a + 3.0 * b + (y + b);
-        else
-            L = 2.0 * a + b + (b - y);
-    }
-    else
-    {
-        float x = P.x * b / max(abs(P.y), 0.00001);
-        if (P.y >= 0.0)
-            L = b + (a - x);
-        else
-            L = 2.0 * a + 3.0 * b + (x + a);
-    }
-    return L / (4.0 * (a + b));
-}
-
 // What defines the outline: alpha, or brightness times alpha. 0 outside the source.
 float shapeAt(float2 tc)
 {
@@ -222,6 +195,33 @@ float shapeAt(float2 tc)
     if (contour_from == 1)
         return dot(c.rgb, float3(0.2126, 0.7152, 0.0722)) * c.a;
     return c.a;
+}
+
+// Position (0 -> 1) along the edge of the rectangle with half-sides hs, travelled at an even
+// speed from the middle of the right side, turning the same way as atan2 (downwards first).
+// P is moved to the nearest side of the rectangle.
+float trackPos(float2 P, float2 hs)
+{
+    float a = hs.x;
+    float b = hs.y;
+    float L;
+    if (a - abs(P.x) < b - abs(P.y))
+    {
+        float y = clamp(P.y, -b, b);
+        if (P.x >= 0.0)
+            L = y >= 0.0 ? y : 4.0 * a + 3.0 * b + (y + b);
+        else
+            L = 2.0 * a + b + (b - y);
+    }
+    else
+    {
+        float x = clamp(P.x, -a, a);
+        if (P.y >= 0.0)
+            L = b + (a - x);
+        else
+            L = 2.0 * a + 3.0 * b + (x + a);
+    }
+    return L / (4.0 * (a + b));
 }
 
 // Approximate distance (px) to the outline, inside or outside: march from the pixel in DIRS
@@ -275,7 +275,12 @@ float4 mainImage(VertData v_in) : TARGET
     float s;
     if (mode == 1)
     {
-        s = frac(perimeterPos(P, uv_size * 0.5) - perimeterPos(float2(cos(ang), sin(ang)), uv_size * 0.5) + 1.0);
+        // The light goes around the outside of the title, like on a track; "Direction" is the
+        // starting point
+        float2 hs = uv_size * 0.5;
+        float2 start = float2(cos(ang), sin(ang));
+        start *= min(hs.x / max(abs(start.x), 0.00001), hs.y / max(abs(start.y), 0.00001));
+        s = frac(trackPos(P, hs) - trackPos(start, hs) + 1.0);
     }
     else if (mode == 3)
     {
@@ -309,6 +314,13 @@ float4 mainImage(VertData v_in) : TARGET
         float spark = exp(-b * 60.0);                                   // brighter tip
         lit = passed * (residual + (1.0 - residual) * tr + 0.8 * spark);
         reveal = smoothstep(0.0, max(trail, 0.04) * 0.5, behind);
+        if (mode == 1)
+        {
+            // In Spin the outline is already dimly lit before the light passes, and the source fades
+            // in over time, so letters are not cut in half
+            lit = max(lit, residual * ease(seg(p, 0.0, 0.1)));
+            reveal = ease(seg(p, 0.15, 0.6));
+        }
     }
     float fl = lerp(1.0, 0.55 + 0.9 * vnoise(float2(t * 23.0, 3.7)), flicker);
     lit *= fadeOut * fl;

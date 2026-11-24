@@ -6,8 +6,8 @@
 // Modos:
 //   Barrido   la luz cruza la fuente en línea recta (izquierda a derecha por defecto) y
 //             enciende el contorno a su paso, dejando una estela
-//   Giro      igual, pero la luz da una vuelta alrededor del centro de la fuente, a velocidad
-//             pareja por el borde
+//   Giro      la luz le da la vuelta al título por fuera, como en una pista: por arriba,
+//             baja por un extremo, regresa por abajo y sube por el otro, a velocidad pareja
 //   Eléctrico tramos del contorno que se encienden y apagan al azar, como neón inestable
 //   Radar     una vuelta con velocidad angular constante, como la aguja de un radar
 //
@@ -41,7 +41,7 @@ uniform int mode<
     int    option_0_value = 0;
     string option_0_label = "Barrido: la luz cruza la fuente en linea recta";
     int    option_1_value = 1;
-    string option_1_label = "Giro: la luz da una vuelta alrededor del centro";
+    string option_1_label = "Giro: la luz le da la vuelta al titulo por fuera";
     int    option_2_value = 2;
     string option_2_label = "Electrico: tramos que se encienden y apagan";
     int    option_3_value = 3;
@@ -186,33 +186,6 @@ float fbm(float2 x)
     return 0.65 * vnoise(x) + 0.35 * vnoise(x * 2.13 + 5.2);
 }
 
-// Posición (0 → 1) en el perímetro del rectángulo de la fuente del punto donde el rayo desde el
-// centro hacia P lo cruza, en el mismo sentido de giro que atan2. Así la luz recorre el borde a
-// velocidad pareja: cerca del centro gira más rápido y en los extremos más lento.
-float perimeterPos(float2 P, float2 hs)
-{
-    float a = hs.x;
-    float b = hs.y;
-    float L;
-    if (abs(P.x) * b >= abs(P.y) * a)
-    {
-        float y = P.y * a / max(abs(P.x), 0.00001);
-        if (P.x >= 0.0)
-            L = y >= 0.0 ? y : 4.0 * a + 3.0 * b + (y + b);
-        else
-            L = 2.0 * a + b + (b - y);
-    }
-    else
-    {
-        float x = P.x * b / max(abs(P.y), 0.00001);
-        if (P.y >= 0.0)
-            L = b + (a - x);
-        else
-            L = 2.0 * a + 3.0 * b + (x + a);
-    }
-    return L / (4.0 * (a + b));
-}
-
 // Lo que define el contorno: alfa, o brillo por alfa. Fuera de la fuente vale 0.
 float shapeAt(float2 tc)
 {
@@ -222,6 +195,33 @@ float shapeAt(float2 tc)
     if (contour_from == 1)
         return dot(c.rgb, float3(0.2126, 0.7152, 0.0722)) * c.a;
     return c.a;
+}
+
+// Posición (0 → 1) en el borde del rectángulo de semilados hs, recorrido a velocidad pareja
+// desde el centro del lado derecho, en el mismo sentido que atan2 (hacia abajo primero).
+// El punto P se lleva al lado más cercano del rectángulo.
+float trackPos(float2 P, float2 hs)
+{
+    float a = hs.x;
+    float b = hs.y;
+    float L;
+    if (a - abs(P.x) < b - abs(P.y))
+    {
+        float y = clamp(P.y, -b, b);
+        if (P.x >= 0.0)
+            L = y >= 0.0 ? y : 4.0 * a + 3.0 * b + (y + b);
+        else
+            L = 2.0 * a + b + (b - y);
+    }
+    else
+    {
+        float x = clamp(P.x, -a, a);
+        if (P.y >= 0.0)
+            L = b + (a - x);
+        else
+            L = 2.0 * a + 3.0 * b + (x + a);
+    }
+    return L / (4.0 * (a + b));
 }
 
 // Distancia aproximada (px) al contorno, por dentro o por fuera: desde el píxel se avanza en
@@ -275,7 +275,12 @@ float4 mainImage(VertData v_in) : TARGET
     float s;
     if (mode == 1)
     {
-        s = frac(perimeterPos(P, uv_size * 0.5) - perimeterPos(float2(cos(ang), sin(ang)), uv_size * 0.5) + 1.0);
+        // La luz da la vuelta al título por fuera, como en una pista; "Dirección" es el punto
+        // de arranque
+        float2 hs = uv_size * 0.5;
+        float2 start = float2(cos(ang), sin(ang));
+        start *= min(hs.x / max(abs(start.x), 0.00001), hs.y / max(abs(start.y), 0.00001));
+        s = frac(trackPos(P, hs) - trackPos(start, hs) + 1.0);
     }
     else if (mode == 3)
     {
@@ -309,6 +314,13 @@ float4 mainImage(VertData v_in) : TARGET
         float spark = exp(-b * 60.0);                                   // punta más brillante
         lit = passed * (residual + (1.0 - residual) * tr + 0.8 * spark);
         reveal = smoothstep(0.0, max(trail, 0.04) * 0.5, behind);
+        if (mode == 1)
+        {
+            // En Giro el contorno ya está tenue antes de que pase la luz, y la fuente aparece
+            // con el tiempo, para no cortar las letras por la mitad
+            lit = max(lit, residual * ease(seg(p, 0.0, 0.1)));
+            reveal = ease(seg(p, 0.15, 0.6));
+        }
     }
     float fl = lerp(1.0, 0.55 + 0.9 * vnoise(float2(t * 23.0, 3.7)), flicker);
     lit *= fadeOut * fl;
