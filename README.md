@@ -69,6 +69,7 @@ Es una secuencia (Progreso de 0 a 100, o en bucle). La luz recorre el contorno d
 |---|---|
 | Modo | *Barrido*: la luz cruza en línea recta. *Giro*: da una vuelta alrededor del centro. *Eléctrico*: tramos que se encienden y apagan al azar |
 | Dirección | Ángulo del barrido (0 = de izquierda a derecha, 90 = de arriba abajo) o punto de arranque del giro |
+| Giro: velocidad pareja | La luz recorre el borde a la misma velocidad: cerca del centro gira más rápido. Apagado, gira con velocidad angular constante, como un radar (en un título ancho se arrastra en el centro y vuela en los extremos) |
 | Fuente | Aparece detrás del trazo, siempre visible u oculta (solo el trazo) |
 | Contorno de | Transparencia, o brillo para logos sobre fondo negro |
 | Color del núcleo / del resplandor | El centro de la línea y el halo |

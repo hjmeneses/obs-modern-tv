@@ -50,6 +50,10 @@ uniform float sweep_angle<
     float minimum = -180.0; float maximum = 180.0; float step = 1.0;
 > = 0.0;
 
+uniform bool spin_even<
+    string label = "Giro: velocidad pareja (si no, angular tipo radar)";
+> = true;
+
 uniform int source_mode<
     string label = "Fuente";
     string widget_type = "select";
@@ -182,6 +186,33 @@ float fbm(float2 x)
     return 0.65 * vnoise(x) + 0.35 * vnoise(x * 2.13 + 5.2);
 }
 
+// Posición (0 → 1) en el perímetro del rectángulo de la fuente del punto donde el rayo desde el
+// centro hacia P lo cruza, en el mismo sentido de giro que atan2. Así la luz recorre el borde a
+// velocidad pareja: cerca del centro gira más rápido y en los extremos más lento.
+float perimeterPos(float2 P, float2 hs)
+{
+    float a = hs.x;
+    float b = hs.y;
+    float L;
+    if (abs(P.x) * b >= abs(P.y) * a)
+    {
+        float y = P.y * a / max(abs(P.x), 0.00001);
+        if (P.x >= 0.0)
+            L = y >= 0.0 ? y : 4.0 * a + 3.0 * b + (y + b);
+        else
+            L = 2.0 * a + b + (b - y);
+    }
+    else
+    {
+        float x = P.x * b / max(abs(P.y), 0.00001);
+        if (P.y >= 0.0)
+            L = b + (a - x);
+        else
+            L = 2.0 * a + 3.0 * b + (x + a);
+    }
+    return L / (4.0 * (a + b));
+}
+
 // Lo que define el contorno: alfa, o brillo por alfa. Fuera de la fuente vale 0.
 float shapeAt(float2 tc)
 {
@@ -244,7 +275,10 @@ float4 mainImage(VertData v_in) : TARGET
     float s;
     if (mode == 1)
     {
-        s = frac(atan2(P.y, P.x) / 6.2831853 - sweep_angle / 360.0 + 1.0);
+        if (spin_even)
+            s = frac(perimeterPos(P, uv_size * 0.5) - perimeterPos(float2(cos(ang), sin(ang)), uv_size * 0.5) + 1.0);
+        else
+            s = frac(atan2(P.y, P.x) / 6.2831853 - sweep_angle / 360.0 + 1.0);
     }
     else
     {
