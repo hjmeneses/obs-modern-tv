@@ -18,6 +18,7 @@ Es la colección hermana de [obs-retro-tv](https://github.com/hjmeneses/obs-retr
 | Archivo | Qué hace |
 |---|---|
 | `glitch.shader` | La escena se rompe sola, como si hackearan el stream: glitches pequeños cada 10–30 s y uno completo cada 30–60 s, en momentos al azar. |
+| `trazo-de-luz.shader` | Una línea de luz con núcleo blanco y resplandor recorre el contorno de un texto o logo, al estilo de los plugins de "sable de luz". |
 
 ## Instalación
 
@@ -54,6 +55,29 @@ La separación entre dos glitches seguidos siempre queda dentro del rango, aunqu
 
 El conteo empieza cuando se activa el filtro: al recargar el shader o reiniciar OBS empieza de cero.
 
+## Trazo de luz (`trazo-de-luz.shader`)
+
+![Trazo de luz: el contorno se enciende con la fuente oculta, la fuente aparece detrás de la luz, y modo eléctrico](images/trazo-de-luz.png)
+
+<sub>Capturas del shader en OBS: barrido con la fuente oculta, barrido con la fuente apareciendo detrás de la luz, y modo eléctrico. / Captures from OBS: sweep with the source hidden, sweep revealing the source, electric mode.</sub>
+
+Aplícalo a una **fuente de texto, logo o imagen con transparencia**. Como el resplandor sale de la fuente, dale margen con *Expand Left/Right/Top/Bottom* en las opciones del filtro.
+
+Es una secuencia (Progreso de 0 a 100, o en bucle). La luz recorre el contorno durante el 0–70, el contorno queda encendido hasta el 80 y luego se apaga.
+
+| Parámetro | Efecto |
+|---|---|
+| Modo | *Barrido*: la luz cruza en línea recta. *Giro*: da una vuelta alrededor del centro. *Eléctrico*: tramos que se encienden y apagan al azar |
+| Dirección | Ángulo del barrido (0 = de izquierda a derecha, 90 = de arriba abajo) o punto de arranque del giro |
+| Fuente | Aparece detrás del trazo, siempre visible u oculta (solo el trazo) |
+| Contorno de | Transparencia, o brillo para logos sobre fondo negro |
+| Color del núcleo / del resplandor | El centro de la línea y el halo |
+| Grosor, alcance e intensidad | Ancho del núcleo, hasta dónde llega el resplandor y qué tan fuerte es |
+| Largo de la estela / Brillo que queda | Cuánto dura la cola de luz y cuánto brilla el contorno después |
+| Temblor, velocidad de la energía, parpadeo | El temblor del trazo, como de electricidad o fuego |
+
+Con [obs-shader-dock](https://github.com/hjmeneses/obs-shader-dock) lo disparas con ▶ desde el dock.
+
 ---
 
 ## English
@@ -70,8 +94,11 @@ Shaders for **OBS Studio** with today's TV and streaming effects: broken digital
 | File | What it does |
 |---|---|
 | `en/glitch.shader` | Your scene glitches on its own, as if the stream were being hacked: small glitches every 10–30 s and a full-scene glitch every 30–60 s, at random times. |
+| `en/light-trace.shader` | A line of light with a white core and a coloured glow runs along the outline of a text or logo, in the style of "light saber" plugins. |
 
-The English version, with English labels and comments, is in the [`en/`](en) folder; the Spanish original is `glitch.shader` in the root.
+The English versions, with English labels and comments, are in the [`en/`](en) folder; the Spanish originals are in the root.
+
+**Light trace**: apply it to a text, logo or image with transparency, and give the glow room with the filter's *Expand* options. It is a sequence (Progress 0–100, or loop): the light runs along the outline over 0–70, the outline stays lit until 80, then fades. Modes: *Sweep* (straight line), *Spin* (once around the centre) and *Electric* (random flickering stretches). The source can appear behind the light, stay visible, or be hidden.
 
 Add it to a scene with **Filters → + → User-defined shader → Load shader text from file**. Set *Mode* to one of the *Test* options to loop a glitch while you tune it. The gap between two glitches always stays within the configured range, however long you are live. Use a different *Seed* on each scene so they don't all glitch together.
 
