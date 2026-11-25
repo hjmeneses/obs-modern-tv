@@ -76,7 +76,9 @@ Es una secuencia (Progreso de 0 a 100, o en bucle). La luz recorre el contorno d
 | Largo de la estela / Brillo que queda | Cuánto dura la cola de luz y cuánto brilla el contorno después |
 | Temblor, velocidad de la energía, parpadeo | El temblor del trazo, como de electricidad o fuego |
 
-Con [obs-shader-dock](https://github.com/hjmeneses/obs-shader-dock) lo disparas con ▶ desde el dock.
+Con [Shader Dock](https://github.com/hjmeneses/shader-dock) (plugin) u [obs-shader-dock](https://github.com/hjmeneses/obs-shader-dock) (de navegador) lo disparas con ▶ desde el dock.
+
+> Este shader barre la imagen. Si quieres que la luz siga cada contorno en orden, letra por letra y con sus huecos, usa el plugin [Light Trace](https://github.com/hjmeneses/light-trace).
 
 ---
 
@@ -98,7 +100,7 @@ Shaders for **OBS Studio** with today's TV and streaming effects: broken digital
 
 The English versions, with English labels and comments, are in the [`en/`](en) folder; the Spanish originals are in the root.
 
-**Light trace**: apply it to a text, logo or image with transparency, and give the glow room with the filter's *Expand* options. It is a sequence (Progress 0–100, or loop): the light runs along the outline over 0–70, the outline stays lit until 80, then fades. Modes: *Sweep* (straight line), *Spin* (the light runs around the outside of the title like on a track, over a dimly lit outline), *Electric* (random flickering stretches) and *Radar* (once around at a constant angular speed). The source can appear behind the light, stay visible, or be hidden.
+**Light trace**: apply it to a text, logo or image with transparency, and give the glow room with the filter's *Expand* options. It is a sequence (Progress 0–100, or loop): the light runs along the outline over 0–70, the outline stays lit until 80, then fades. Modes: *Sweep* (straight line), *Spin* (the light runs around the outside of the title like on a track, over a dimly lit outline), *Electric* (random flickering stretches) and *Radar* (once around at a constant angular speed). The source can appear behind the light, stay visible, or be hidden. This shader sweeps the image; for a light that follows each outline in order, letter by letter including the holes, use the [Light Trace](https://github.com/hjmeneses/light-trace) plugin.
 
 Add it to a scene with **Filters → + → User-defined shader → Load shader text from file**. Set *Mode* to one of the *Test* options to loop a glitch while you tune it. The gap between two glitches always stays within the configured range, however long you are live. Use a different *Seed* on each scene so they don't all glitch together.
 
