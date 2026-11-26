@@ -2,7 +2,7 @@
 
 *Modern TV effects for OBS: digital glitches, a light trace, a black hole, and more to come.*
 
-Shaders para **OBS Studio** con efectos de la televisión y el streaming de hoy: señal digital que se rompe, compresión dañada, cortes de transmisión…
+Shaders para **OBS Studio** con efectos de la televisión y el streaming de hoy: señal digital que se rompe, un trazo de luz para títulos y un agujero negro de película.
 
 Es la colección hermana de [obs-retro-tv](https://github.com/hjmeneses/obs-retro-tv), que va de los efectos de los 60.
 
@@ -19,7 +19,7 @@ Es la colección hermana de [obs-retro-tv](https://github.com/hjmeneses/obs-retr
 |---|---|
 | `glitch.shader` | La escena se rompe sola, como si hackearan el stream: glitches pequeños cada 10–30 s y uno completo cada 30–60 s, en momentos al azar. |
 | `trazo-de-luz.shader` | Una línea de luz con núcleo blanco y resplandor recorre el contorno de un texto o logo, al estilo de los plugins de "sable de luz". |
-| `gargantua.shader` | Un agujero negro con disco de acreción en tiempo real, inspirado en el de *Interstellar*: el rayo de cada pixel se dobla de verdad alrededor del agujero. |
+| `gargantua.shader` | Un agujero negro con disco de acreción en tiempo real, inspirado en el de *Interstellar*: el rayo de cada píxel se dobla de verdad alrededor del agujero. |
 
 ## Instalación
 
@@ -27,6 +27,8 @@ Es la colección hermana de [obs-retro-tv](https://github.com/hjmeneses/obs-retr
 2. En OBS, clic derecho sobre la escena o fuente → **Filtros** → **+** → **User-defined shader**.
 3. Activa **Load shader text from file** y elige el archivo `.shader`.
 4. Ajusta los parámetros.
+
+Con [Shader Dock](https://github.com/hjmeneses/shader-dock) (plugin) u [obs-shader-dock](https://github.com/hjmeneses/obs-shader-dock) (de navegador) los controlas desde un dock: encender y apagar el glitch y Gargantúa, o disparar el trazo de luz con ▶.
 
 ## Glitch digital (`glitch.shader`)
 
@@ -77,8 +79,6 @@ Es una secuencia (Progreso de 0 a 100, o en bucle). La luz recorre el contorno d
 | Largo de la estela / Brillo que queda | Cuánto dura la cola de luz y cuánto brilla el contorno después |
 | Temblor, velocidad de la energía, parpadeo | El temblor del trazo, como de electricidad o fuego |
 
-Con [Shader Dock](https://github.com/hjmeneses/shader-dock) (plugin) u [obs-shader-dock](https://github.com/hjmeneses/obs-shader-dock) (de navegador) lo disparas con ▶ desde el dock.
-
 > Este shader barre la imagen. Si quieres que la luz siga cada contorno en orden, letra por letra y con sus huecos, usa el plugin [Light Trace](https://github.com/hjmeneses/light-trace).
 
 ## Gargantúa — agujero negro (`gargantua.shader`)
@@ -87,7 +87,7 @@ Con [Shader Dock](https://github.com/hjmeneses/shader-dock) (plugin) u [obs-shad
 
 <sub>Captura del shader en OBS a 1080p. / Capture from OBS at 1080p.</sub>
 
-Aplícalo a una **fuente de color negro** (o a una escena vacía); no usa la imagen de entrada. Cada pixel lanza un rayo que se dobla alrededor del agujero con la aceleración de un fotón en Schwarzschild, así que el lado lejano del disco aparece arriba y abajo de la sombra. El lado que viene hacia ti brilla más y es más blanco (Doppler), y el anillo de fotones hereda ese mismo color y las vetas del disco. El centro queda negro puro.
+Aplícalo a una **fuente de color negro** (o a una escena vacía); no usa la imagen de entrada. Cada píxel lanza un rayo que se dobla alrededor del agujero con la aceleración de un fotón en Schwarzschild, así que el lado lejano del disco aparece arriba y abajo de la sombra. El lado que viene hacia ti brilla más y es más blanco (Doppler), y el anillo de fotones hereda ese mismo color y las vetas del disco. El centro queda negro puro.
 
 | Parámetro | Efecto |
 |---|---|
@@ -100,7 +100,7 @@ Aplícalo a una **fuente de color negro** (o a una escena vacía); no usa la ima
 | Lente gravitacional | 0 = sin curvar la luz, 1 = física completa |
 | Brillo del disco / Glow / Exposición | Brillo del disco, resplandor alrededor y exposición final |
 | Densidad de estrellas | Estrellas de fondo (0 = sin estrellas) |
-| Calidad (pasos del rayo) | 32, 64 o 128 pasos. 64 tarda unos 2.7 ms de GPU a 1080p en una tarjeta de gama media |
+| Calidad (pasos del rayo) | 32, 64 o 128 pasos. 64 tarda unos 2.7 ms de GPU a 1080p en una GTX 1650 Ti de laptop |
 
 La spec completa y sus criterios de aceptación están en [`docs/gargantua-spec.md`](docs/gargantua-spec.md); [`tools/gargantua_tests.py`](tools/gargantua_tests.py) los verifica contra OBS por obs-websocket.
 
@@ -108,7 +108,7 @@ La spec completa y sus criterios de aceptación están en [`docs/gargantua-spec.
 
 ## English
 
-Shaders for **OBS Studio** with today's TV and streaming effects: broken digital signal, damaged compression, dropouts… Sister collection of [obs-retro-tv](https://github.com/hjmeneses/obs-retro-tv).
+Shaders for **OBS Studio** with today's TV and streaming effects: a broken digital signal, a light trace for titles and a movie-style black hole. Sister collection of [obs-retro-tv](https://github.com/hjmeneses/obs-retro-tv).
 
 ### Requirements
 
@@ -120,15 +120,20 @@ Shaders for **OBS Studio** with today's TV and streaming effects: broken digital
 | File | What it does |
 |---|---|
 | `en/glitch.shader` | Your scene glitches on its own, as if the stream were being hacked: small glitches every 10–30 s and a full-scene glitch every 30–60 s, at random times. |
-| `en/light-trace.shader` | A line of light with a white core and a coloured glow runs along the outline of a text or logo, in the style of "light saber" plugins. |
+| `en/light-trace.shader` | A line of light with a white core and a colored glow runs along the outline of a text or logo, in the style of "light saber" plugins. |
 | `en/gargantua.shader` | A real-time black hole with an accretion disk, inspired by the one in *Interstellar*: each pixel's ray really bends around the black hole. |
 
 The English versions, with English labels and comments, are in the [`en/`](en) folder; the Spanish originals are in the root.
 
+### Installation
+
+In OBS, right-click the scene or source → **Filters** → **+** → **User-defined shader**, enable **Load shader text from file** and pick the `.shader` file. With [Shader Dock](https://github.com/hjmeneses/shader-dock) (plugin) or [obs-shader-dock](https://github.com/hjmeneses/obs-shader-dock) (browser) you control them from a dock: switch the glitch and Gargantua on and off, or fire the light trace with ▶.
+
+**Glitch**: apply it to the whole scene (or to one source). Set *Mode* to one of the *Test* options to loop a glitch while you tune it. The gap between two glitches always stays within the configured range, however long you are live. Use a different *Seed* on each scene so they don't all glitch together.
+
 **Light trace**: apply it to a text, logo or image with transparency, and give the glow room with the filter's *Expand* options. It is a sequence (Progress 0–100, or loop): the light runs along the outline over 0–70, the outline stays lit until 80, then fades. Modes: *Sweep* (straight line), *Spin* (the light runs around the outside of the title like on a track, over a dimly lit outline), *Electric* (random flickering stretches) and *Radar* (once around at a constant angular speed). The source can appear behind the light, stay visible, or be hidden. This shader sweeps the image; for a light that follows each outline in order, letter by letter including the holes, use the [Light Trace](https://github.com/hjmeneses/light-trace) plugin.
 
-**Gargantua**: apply it to a black color source (or an empty scene); it ignores the input image. Each pixel traces a ray that bends around the black hole like a photon in Schwarzschild spacetime, so the far side of the disk shows above and below the shadow. The side moving towards you is brighter and whiter (Doppler), and the photon ring takes the same color and the disk's streaks. The center stays pure black. Parameters: black hole radius, disk inner/outer radius and thickness, camera inclination, rotation speed, Doppler, gravitational lensing (0 = straight light, 1 = full physics), disk brightness, glow, star density, exposure, and quality (32/64/128 ray steps; 64 takes about 2.7 ms of GPU at 1080p on a mid-range card). The full spec and its acceptance criteria are in [`docs/gargantua-spec.md`](docs/gargantua-spec.md), and [`tools/gargantua_tests.py`](tools/gargantua_tests.py) checks them against OBS over obs-websocket.
-Add it to a scene with **Filters → + → User-defined shader → Load shader text from file**. Set *Mode* to one of the *Test* options to loop a glitch while you tune it. The gap between two glitches always stays within the configured range, however long you are live. Use a different *Seed* on each scene so they don't all glitch together.
+**Gargantua**: apply it to a black color source (or an empty scene); it ignores the input image. Each pixel traces a ray that bends around the black hole like a photon in Schwarzschild spacetime, so the far side of the disk shows above and below the shadow. The side moving towards you is brighter and whiter (Doppler), and the photon ring takes the same color and the disk's streaks. The center stays pure black. Parameters: black hole radius, disk inner/outer radius and thickness, camera inclination, rotation speed, Doppler, gravitational lensing (0 = straight light, 1 = full physics), disk brightness, glow, star density, exposure, and quality (32/64/128 ray steps; 64 takes about 2.7 ms of GPU at 1080p on a laptop GTX 1650 Ti). The full spec and its acceptance criteria are in [`docs/gargantua-spec.md`](docs/gargantua-spec.md), and [`tools/gargantua_tests.py`](tools/gargantua_tests.py) checks them against OBS over obs-websocket.
 
 ## License
 
