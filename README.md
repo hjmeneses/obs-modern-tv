@@ -87,10 +87,18 @@ Es una secuencia (Progreso de 0 a 100, o en bucle). La luz recorre el contorno d
 
 <sub>Captura del shader en OBS a 1080p. / Capture from OBS at 1080p.</sub>
 
-Aplícalo a una **fuente de color negro** (o a una escena vacía); no usa la imagen de entrada. Cada píxel lanza un rayo que se dobla alrededor del agujero con la aceleración de un fotón en Schwarzschild, así que el lado lejano del disco aparece arriba y abajo de la sombra. El lado que viene hacia ti brilla más y es más blanco (Doppler), y el anillo de fotones hereda ese mismo color y las vetas del disco. El centro queda negro puro.
+Tiene dos modos:
+
+- **Fondo: Estrellas.** Aplícalo a una **fuente de color negro** (o a una escena vacía); no usa la imagen de entrada.
+- **Fondo: Escena.** Aplícalo a una **escena o grupo** y el lente la deforma: se estira alrededor del agujero, junto a la sombra aparece invertida (la imagen del otro lado) y lo que queda detrás del agujero forma el anillo de Einstein. Donde el lente no llega, la escena sale idéntica. Con *Mostrar disco* apagado queda solo la distorsión; con *Posición X/Y* lo pones donde quieras, o lo animas para que cruce la escena.
+
+Cada píxel lanza un rayo que se dobla alrededor del agujero con la aceleración de un fotón en Schwarzschild, así que el lado lejano del disco aparece arriba y abajo de la sombra. El lado que viene hacia ti brilla más y es más blanco (Doppler), y el anillo de fotones hereda ese mismo color y las vetas del disco. El centro queda negro puro.
 
 | Parámetro | Efecto |
 |---|---|
+| Fondo | *Estrellas*, o *Escena*: el lente deforma la imagen a la que aplicas el filtro |
+| Posición X / Y | Dónde va el agujero (0 = centro) |
+| Mostrar disco | Apagado: sin disco, anillo ni glow, solo la sombra y el lente |
 | Radio del agujero | Tamaño de la sombra en pantalla |
 | Disco: radio interior / exterior | Dónde empieza y termina el disco, en radios del agujero |
 | Disco: grosor | Qué tan opaco es el disco |
@@ -98,6 +106,7 @@ Aplícalo a una **fuente de color negro** (o a una escena vacía); no usa la ima
 | Velocidad de giro | Qué tan rápido gira el disco |
 | Doppler | Diferencia de brillo y color entre el lado que se acerca y el que se aleja |
 | Lente gravitacional | 0 = sin curvar la luz, 1 = física completa |
+| Alcance del lente | Hasta dónde llega la deformación del fondo: bajo = solo junto al agujero |
 | Brillo del disco / Glow / Exposición | Brillo del disco, resplandor alrededor y exposición final |
 | Densidad de estrellas | Estrellas de fondo (0 = sin estrellas) |
 | Calidad (pasos del rayo) | 32, 64 o 128 pasos. 64 tarda unos 2.7 ms de GPU a 1080p en una GTX 1650 Ti de laptop |
@@ -133,7 +142,7 @@ In OBS, right-click the scene or source → **Filters** → **+** → **User-def
 
 **Light trace**: apply it to a text, logo or image with transparency, and give the glow room with the filter's *Expand* options. It is a sequence (Progress 0–100, or loop): the light runs along the outline over 0–70, the outline stays lit until 80, then fades. Modes: *Sweep* (straight line), *Spin* (the light runs around the outside of the title like on a track, over a dimly lit outline), *Electric* (random flickering stretches) and *Radar* (once around at a constant angular speed). The source can appear behind the light, stay visible, or be hidden. This shader sweeps the image; for a light that follows each outline in order, letter by letter including the holes, use the [Light Trace](https://github.com/hjmeneses/light-trace) plugin.
 
-**Gargantua**: apply it to a black color source (or an empty scene); it ignores the input image. Each pixel traces a ray that bends around the black hole like a photon in Schwarzschild spacetime, so the far side of the disk shows above and below the shadow. The side moving towards you is brighter and whiter (Doppler), and the photon ring takes the same color and the disk's streaks. The center stays pure black. Parameters: black hole radius, disk inner/outer radius and thickness, camera inclination, rotation speed, Doppler, gravitational lensing (0 = straight light, 1 = full physics), disk brightness, glow, star density, exposure, and quality (32/64/128 ray steps; 64 takes about 2.7 ms of GPU at 1080p on a laptop GTX 1650 Ti). The full spec and its acceptance criteria are in [`docs/gargantua-spec.md`](docs/gargantua-spec.md), and [`tools/gargantua_tests.py`](tools/gargantua_tests.py) checks them against OBS over obs-websocket.
+**Gargantua**: with *Background: Stars*, apply it to a black color source (or an empty scene); it ignores the input image. With *Background: Scene*, apply it to a scene or group and the lensing warps it: it stretches around the black hole, shows up inverted next to the shadow (the image from the other side), and whatever is behind the black hole forms the Einstein ring. Where the lensing does not reach, the scene comes out unchanged. Turn *Show disk* off to keep only the warp, and use *Position X/Y* to place it anywhere or animate it across the scene. Each pixel traces a ray that bends around the black hole like a photon in Schwarzschild spacetime, so the far side of the disk shows above and below the shadow. The side moving towards you is brighter and whiter (Doppler), and the photon ring takes the same color and the disk's streaks. The center stays pure black. Parameters: background, position X/Y, show disk, black hole radius, disk inner/outer radius and thickness, camera inclination, rotation speed, Doppler, gravitational lensing (0 = straight light, 1 = full physics), lensing reach, disk brightness, glow, star density, exposure, and quality (32/64/128 ray steps; 64 takes about 2.7 ms of GPU at 1080p on a laptop GTX 1650 Ti). The full spec and its acceptance criteria are in [`docs/gargantua-spec.md`](docs/gargantua-spec.md), and [`tools/gargantua_tests.py`](tools/gargantua_tests.py) checks them against OBS over obs-websocket.
 
 ## License
 

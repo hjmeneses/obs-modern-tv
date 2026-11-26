@@ -1,8 +1,8 @@
 // Gargantua: a black hole with an accretion disk, procedural and real time.
 // Inspired by the black hole in the film Interstellar (2014).
-// For OBS Studio (obs-shaderfilter plugin): add it as a filter on a black color source (or an empty
-// scene) → Filters → + → User-defined shader → Load shader text from file. It does not use the
-// input image.
+// For OBS Studio (obs-shaderfilter plugin): Filters → + → User-defined shader → Load shader text
+// from file. With Background = Stars, add it to a black color source (it ignores the input image);
+// with Background = Scene, add it to a scene or group and the lensing warps the image.
 //
 // How it works (details in docs/gargantua-spec.md):
 //   - One ray per pixel leaves the camera and bends step by step with the acceleration of a photon
@@ -12,7 +12,33 @@
 //   - The shadow and the ring are decided from the ray's impact parameter, which is known exactly,
 //     so the edge stays smooth whatever the number of steps.
 //   - Doppler: the side of the disk moving towards you is brighter (g^3) and whiter.
-//   - Everything is computed in linear light; exposure, tone mapping, sRGB and dithering go last.
+//   - Everything is computed in linear; exposure, tone mapping, sRGB and dithering go last. The scene
+//     skips the tone mapping: where there is no light from the black hole it comes out unchanged.
+
+uniform int background<
+    string label = "Background";
+    string widget_type = "select";
+    int    option_0_value = 0;
+    string option_0_label = "Stars";
+    int    option_1_value = 1;
+    string option_1_label = "Scene (warped by the lensing)";
+> = 0;
+
+uniform float center_x<
+    string label = "Position X (0 = center)";
+    string widget_type = "slider";
+    float minimum = -0.7; float maximum = 0.7; float step = 0.005;
+> = 0.0;
+
+uniform float center_y<
+    string label = "Position Y (0 = center)";
+    string widget_type = "slider";
+    float minimum = -0.7; float maximum = 0.7; float step = 0.005;
+> = 0.0;
+
+uniform bool show_disk<
+    string label = "Show disk";
+> = true;
 
 uniform float black_hole_radius<
     string label = "Black hole radius";
@@ -61,6 +87,12 @@ uniform float lensing_strength<
     string widget_type = "slider";
     float minimum = 0.0; float maximum = 2.0; float step = 0.05;
 > = 1.0;
+
+uniform float lens_reach<
+    string label = "Lensing reach";
+    string widget_type = "slider";
+    float minimum = 0.1; float maximum = 4.0; float step = 0.05;
+> = 0.5;
 
 uniform float disk_brightness<
     string label = "Disk brightness";
@@ -207,6 +239,15 @@ float3 starField(float3 d, float t, float pa)
     return float3(total, total, total) * 0.8;
 }
 
+// Mirrored texture coordinates: 0..1, 1..2 reversed, 2..3 forward again... Never past the center
+// of the edge pixels: bilinear sampling there would mix in the texture's black border.
+float2 mirrorUV(float2 u)
+{
+    float2 f = frac(u * 0.5) * 2.0;
+    float2 half_px = 0.5 / uv_size;
+    return clamp(1.0 - abs(f - 1.0), half_px, 1.0 - half_px);
+}
+
 // Filmic tone mapping (Narkowicz's ACES approximation): strong highlights go to white
 float3 filmic(float3 x)
 {
@@ -217,8 +258,9 @@ float4 mainImage(VertData v_in) : TARGET
 {
     float t = elapsed_time;
     float minDim = min(uv_size.x, uv_size.y);
-    // Screen centered, scaled by the short side, y up
-    float2 p = float2(v_in.uv.x - 0.5, 0.5 - v_in.uv.y) * uv_size / minDim;
+    // Screen centered on the black hole, scaled by the short side, y up
+    float2 c = float2(center_x * uv_size.x, center_y * uv_size.y) / minDim;
+    float2 p = float2(v_in.uv.x - 0.5, 0.5 - v_in.uv.y) * uv_size / minDim - c;
 
     // ---- Camera -----------------------------------------------------------------------------
     float inc = radians(inclination);
@@ -278,7 +320,7 @@ float4 mainImage(VertData v_in) : TARGET
 
         // Disk haze (glow): light near the plane, without noise so it stays cheap
         float rp = length(pos.xz);
-        if (abs(pos.y) < 1.0 && rp > rin * 0.9 && rp < rout * 1.15) {
+        if (show_disk && abs(pos.y) < 1.0 && rp > rin * 0.9 && rp < rout * 1.15) {
             float gH = dopplerG(pos, ndir, max(rp, 1.01));
             float heat = diskHeat(max(rp, rin), rin);
             float dens = diskDensity(rp, rin * 0.92, rout * 1.1);
@@ -286,7 +328,7 @@ float4 mainImage(VertData v_in) : TARGET
         }
 
         // Does it cross the disk plane in this step?
-        if (pos.y * npos.y < 0.0) {
+        if (show_disk && pos.y * npos.y < 0.0) {
             float f = pos.y / (pos.y - npos.y);
             float3 hit = lerp(pos, npos, f);
             float rh = length(hit.xz);
@@ -317,9 +359,49 @@ float4 mainImage(VertData v_in) : TARGET
     // Stars are at infinity: with the camera this close, full lensing would stretch the whole sky
     // into arcs. It applies fully next to the shadow (Einstein ring) and fades outwards. This is
     // an artistic choice (spec, section 7).
-    float wl = exp(-max(b - 1.25 * bc, 0.0) / (0.5 * max(bc, 0.5)));
+    float wl = exp(-max(b - 1.25 * bc, 0.0) / (lens_reach * max(bc, 0.5)));
     float3 sdir = normalize(lerp(dir0, dir, wl));
-    col += trans * (1.0 - shadow) * starField(sdir, t, pa);
+    float see = trans * (1.0 - shadow);                      // how much of the background shows
+
+    // Scene: the ray's final direction is mapped back to the screen (the camera's inverse) and the
+    // image is read there. The offset is added to the pixel's uv instead of using the rebuilt
+    // point, so wherever the ray is not deflected the scene comes out identical.
+    // Next to the shadow the ray bends by hundreds of degrees: fine for the sky, but the scene is a
+    // small rectangle. The deflection saturates smoothly at ~3 times the shadow's angular size;
+    // far away nothing changes, and next to the shadow the secondary image remains (the scene from
+    // the other side, inverted), continuous and without endless squeezing.
+    float aMax = 3.0 * asin(min(bc / CAM_DIST, 1.0));
+    // The deflection comes from Schwarzschild's second-order formula (2/b + 15·pi/16/b^2), not from
+    // the tracing: in this range it is almost the same and it is smooth, without the tracing's small
+    // steps that show as lines on the scene. It always points to the black hole, in the camera's plane.
+    float bl = max(b, rcap);
+    float dev = wl * (2.0 * lens / bl + 2.9452 * lens * lens / (bl * bl));
+    float devS = aMax * tanh(dev / aMax);
+    float3 side = fwd - dir0 * dot(fwd, dir0);
+    float3 vdir = dot(side, side) > 1e-12 ? dir0 * cos(devS) + normalize(side) * sin(devS) : dir0;
+    float fz0 = dot(dir0, fwd);
+    float fz = max(dot(vdir, fwd), 0.05);
+    float2 q0 = float2(dot(dir0, right), dot(dir0, up)) / fz0;
+    float2 q = float2(dot(vdir, right), dot(vdir, up)) / fz;
+    float2 suv = v_in.uv + float2(1.0, -1.0) * (q - q0) / k * minDim / uv_size;
+    // Where the lensing squeezes the scene, several reads over the pixel's area avoid flicker;
+    // where it does not, all four land on the same point
+    float2 du = ddx(suv);
+    float2 dv = ddy(suv);
+    float foot = max(length(du * uv_size), length(dv * uv_size));
+    // Capped: at the tracing's small steps the derivative shoots up and would bring far colors
+    float spread = saturate(foot - 1.0) * min(1.0, 4.0 / max(foot, 1e-3));
+    du *= spread;
+    dv *= spread;
+    // Whatever falls outside the frame reads the scene mirrored: no seams, and next to the ring
+    // ever more squeezed copies show up, as with a strong lens
+    float4 scene = 0.25 * (image.Sample(textureSampler, mirrorUV(suv - 0.375 * du - 0.125 * dv))
+                         + image.Sample(textureSampler, mirrorUV(suv + 0.125 * du - 0.375 * dv))
+                         + image.Sample(textureSampler, mirrorUV(suv + 0.375 * du + 0.125 * dv))
+                         + image.Sample(textureSampler, mirrorUV(suv - 0.125 * du + 0.375 * dv)));
+    float inFrame = background == 1 ? 1.0 : 0.0;
+
+    col += see * (1.0 - inFrame) * starField(sdir, t, pa);
 
     // Photon ring: it is light from the disk itself that went around the black hole, so it takes
     // the disk's Doppler, color and streaks. It hugs the shadow edge and fades outwards; inwards
@@ -331,10 +413,10 @@ float4 mainImage(VertData v_in) : TARGET
     float angR = atan2(p.y, p.x);
     float nR = vnoise(float2((angR + rotA) * 24.0 / TAU, 3.0), 24.0);
     float wR = max(0.01 * bc, pxb);
-    float edge = 1.0 - shadow;
+    float edge = show_disk ? 1.0 - shadow : 0.0;            // no disk, no ring or halo
     float ring = edge * exp(-max(b - bc, 0.0) / wR);
     // The image with one turn less: a fainter line a little further out
-    ring += 0.3 * exp(-pow((b - (bc + 4.0 * wR)) / (0.7 * wR), 2.0));
+    ring += 0.3 * edge * exp(-pow((b - (bc + 4.0 * wR)) / (0.7 * wR), 2.0));
     float3 ringCol = diskRamp(0.8 * gR);
     col += trans * ringCol * ring * disk_brightness * 1.4 * (gR * gR * gR) * (0.55 + 0.9 * nR);
 
@@ -343,11 +425,15 @@ float4 mainImage(VertData v_in) : TARGET
 
     // ---- Output ----------------------------------------------------------------------------------
     col = filmic(col * exposure * 0.8);
-    col = pow(col, 1.0 / 2.2);
-    // Triangular dithering against banding, only where there is light: the center stays pure black
+    // Triangular dithering against banding, only where there is light from the black hole: the
+    // center stays pure black and the scene untouched
     float2 px = v_in.uv * uv_size;
     float dither = (hash12(px) + hash12(px + 71.3) - 1.0) / 255.0;
-    float lit = max(col.r, max(col.g, col.b)) > 0.5 / 255.0 ? 1.0 : 0.0;
+    float lit = max(col.r, max(col.g, col.b)) > pow(0.5 / 255.0, 2.2) ? 1.0 : 0.0;
+    // The scene is added in linear, without exposure or tone mapping
+    float sceneW = see * inFrame;
+    col = pow(col + pow(scene.rgb, 2.2) * sceneW, 1.0 / 2.2);
     col = saturate(col + dither * lit);
-    return float4(col, 1.0);
+    float alpha = saturate(scene.a * sceneW + (1.0 - sceneW));
+    return float4(col, alpha);
 }

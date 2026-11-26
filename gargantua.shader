@@ -1,8 +1,8 @@
 // Gargantua: agujero negro con disco de acrecion, procedural y en tiempo real.
 // Inspirado en el agujero negro de la pelicula Interstellar (2014).
-// Para OBS Studio (plugin obs-shaderfilter): ponlo como filtro en una fuente de color negra (o una
-// escena vacia) → Filtros → + → User-defined shader → Load shader text from file. No usa la imagen
-// de entrada.
+// Para OBS Studio (plugin obs-shaderfilter): Filtros → + → User-defined shader → Load shader text
+// from file. Con Fondo = Estrellas ponlo en una fuente de color negra (no usa la imagen de entrada);
+// con Fondo = Escena ponlo en una escena o grupo y el lente deforma la imagen.
 //
 // Como funciona (detalle en docs/gargantua-spec.md):
 //   - Un rayo por pixel sale de la camara y se dobla paso a paso con la aceleracion de un foton
@@ -12,7 +12,33 @@
 //   - La sombra y el anillo se deciden con el parametro de impacto del rayo, que se conoce de forma
 //     exacta, asi el borde sale suave sin importar los pasos.
 //   - Doppler: el lado del disco que se acerca brilla mas (g^3) y se ve mas blanco.
-//   - Todo se calcula en lineal; al final van exposicion, tone mapping, sRGB y dithering.
+//   - Todo se calcula en lineal; al final van exposicion, tone mapping, sRGB y dithering. La escena
+//     no pasa por el tone mapping: donde no hay luz del agujero sale tal cual.
+
+uniform int background<
+    string label = "Fondo";
+    string widget_type = "select";
+    int    option_0_value = 0;
+    string option_0_label = "Estrellas";
+    int    option_1_value = 1;
+    string option_1_label = "Escena (la deforma el lente)";
+> = 0;
+
+uniform float center_x<
+    string label = "Posicion X (0 = centro)";
+    string widget_type = "slider";
+    float minimum = -0.7; float maximum = 0.7; float step = 0.005;
+> = 0.0;
+
+uniform float center_y<
+    string label = "Posicion Y (0 = centro)";
+    string widget_type = "slider";
+    float minimum = -0.7; float maximum = 0.7; float step = 0.005;
+> = 0.0;
+
+uniform bool show_disk<
+    string label = "Mostrar disco";
+> = true;
 
 uniform float black_hole_radius<
     string label = "Radio del agujero";
@@ -61,6 +87,12 @@ uniform float lensing_strength<
     string widget_type = "slider";
     float minimum = 0.0; float maximum = 2.0; float step = 0.05;
 > = 1.0;
+
+uniform float lens_reach<
+    string label = "Alcance del lente";
+    string widget_type = "slider";
+    float minimum = 0.1; float maximum = 4.0; float step = 0.05;
+> = 0.5;
 
 uniform float disk_brightness<
     string label = "Brillo del disco";
@@ -207,6 +239,15 @@ float3 starField(float3 d, float t, float pa)
     return float3(total, total, total) * 0.8;
 }
 
+// Coordenadas de textura en espejo: 0..1, 1..2 al reves, 2..3 al derecho... Sin pasar del centro
+// de los pixeles de la orilla: el muestreo bilineal ahi mezclaria el borde negro de la textura.
+float2 mirrorUV(float2 u)
+{
+    float2 f = frac(u * 0.5) * 2.0;
+    float2 half_px = 0.5 / uv_size;
+    return clamp(1.0 - abs(f - 1.0), half_px, 1.0 - half_px);
+}
+
 // Tone mapping filmico (aproximacion de ACES de Narkowicz): los brillos fuertes se van a blanco
 float3 filmic(float3 x)
 {
@@ -217,8 +258,9 @@ float4 mainImage(VertData v_in) : TARGET
 {
     float t = elapsed_time;
     float minDim = min(uv_size.x, uv_size.y);
-    // Pantalla centrada, escalada por el lado corto, y hacia arriba
-    float2 p = float2(v_in.uv.x - 0.5, 0.5 - v_in.uv.y) * uv_size / minDim;
+    // Pantalla centrada en el agujero, escalada por el lado corto, y hacia arriba
+    float2 c = float2(center_x * uv_size.x, center_y * uv_size.y) / minDim;
+    float2 p = float2(v_in.uv.x - 0.5, 0.5 - v_in.uv.y) * uv_size / minDim - c;
 
     // ---- Camara -----------------------------------------------------------------------------
     float inc = radians(inclination);
@@ -278,7 +320,7 @@ float4 mainImage(VertData v_in) : TARGET
 
         // Neblina del disco (glow): luz cerca del plano, sin ruido para que sea barata
         float rp = length(pos.xz);
-        if (abs(pos.y) < 1.0 && rp > rin * 0.9 && rp < rout * 1.15) {
+        if (show_disk && abs(pos.y) < 1.0 && rp > rin * 0.9 && rp < rout * 1.15) {
             float gH = dopplerG(pos, ndir, max(rp, 1.01));
             float heat = diskHeat(max(rp, rin), rin);
             float dens = diskDensity(rp, rin * 0.92, rout * 1.1);
@@ -286,7 +328,7 @@ float4 mainImage(VertData v_in) : TARGET
         }
 
         // ¿Cruza el plano del disco en este paso?
-        if (pos.y * npos.y < 0.0) {
+        if (show_disk && pos.y * npos.y < 0.0) {
             float f = pos.y / (pos.y - npos.y);
             float3 hit = lerp(pos, npos, f);
             float rh = length(hit.xz);
@@ -317,9 +359,49 @@ float4 mainImage(VertData v_in) : TARGET
     // Las estrellas estan en el infinito: con la camara tan cerca, el lente completo estiraria todo
     // el cielo en arcos. Se aplica completo junto a la sombra (anillo de Einstein) y se atenua
     // hacia afuera. Es una decision artistica (spec, seccion 7).
-    float wl = exp(-max(b - 1.25 * bc, 0.0) / (0.5 * max(bc, 0.5)));
+    float wl = exp(-max(b - 1.25 * bc, 0.0) / (lens_reach * max(bc, 0.5)));
     float3 sdir = normalize(lerp(dir0, dir, wl));
-    col += trans * (1.0 - shadow) * starField(sdir, t, pa);
+    float see = trans * (1.0 - shadow);                      // cuanto del fondo se ve
+
+    // Escena: la direccion final del rayo se vuelve a pasar a la pantalla (la inversa de la camara)
+    // y ahi se lee la imagen. Se suma el desplazamiento al uv del pixel en lugar de usar el punto
+    // reconstruido, asi donde el rayo no se desvia la escena sale identica.
+    // Junto a la sombra el rayo se dobla cientos de grados: sirve para el cielo, pero la escena es un
+    // rectangulo chico. El desvio se satura suave en ~3 veces el tamano angular de la sombra; lejos
+    // no cambia nada y junto a la sombra queda la imagen secundaria (la escena del otro lado,
+    // invertida), continua y sin comprimirse sin fin.
+    float aMax = 3.0 * asin(min(bc / CAM_DIST, 1.0));
+    // El desvio sale de la formula de Schwarzschild a segundo orden (2/b + 15·pi/16/b^2), no del
+    // trazado: en este rango es casi igual y es suave, sin los escalones del trazado que en la escena
+    // se ven como lineas. Siempre es hacia el agujero, en el plano de la camara.
+    float bl = max(b, rcap);
+    float dev = wl * (2.0 * lens / bl + 2.9452 * lens * lens / (bl * bl));
+    float devS = aMax * tanh(dev / aMax);
+    float3 side = fwd - dir0 * dot(fwd, dir0);
+    float3 vdir = dot(side, side) > 1e-12 ? dir0 * cos(devS) + normalize(side) * sin(devS) : dir0;
+    float fz0 = dot(dir0, fwd);
+    float fz = max(dot(vdir, fwd), 0.05);
+    float2 q0 = float2(dot(dir0, right), dot(dir0, up)) / fz0;
+    float2 q = float2(dot(vdir, right), dot(vdir, up)) / fz;
+    float2 suv = v_in.uv + float2(1.0, -1.0) * (q - q0) / k * minDim / uv_size;
+    // Donde el lente comprime la escena, varias lecturas en el area del pixel evitan el parpadeo;
+    // donde no la comprime las cuatro caen en el mismo punto
+    float2 du = ddx(suv);
+    float2 dv = ddy(suv);
+    float foot = max(length(du * uv_size), length(dv * uv_size));
+    // Con tope: en los escalones del trazado la derivada se dispara y traeria colores de lejos
+    float spread = saturate(foot - 1.0) * min(1.0, 4.0 / max(foot, 1e-3));
+    du *= spread;
+    dv *= spread;
+    // Lo que cae fuera del cuadro lee la escena en espejo: sin costuras, y junto al anillo salen
+    // copias cada vez mas comprimidas, como en un lente fuerte
+    float4 scene = 0.25 * (image.Sample(textureSampler, mirrorUV(suv - 0.375 * du - 0.125 * dv))
+                         + image.Sample(textureSampler, mirrorUV(suv + 0.125 * du - 0.375 * dv))
+                         + image.Sample(textureSampler, mirrorUV(suv + 0.375 * du + 0.125 * dv))
+                         + image.Sample(textureSampler, mirrorUV(suv - 0.125 * du + 0.375 * dv)));
+    float inFrame = background == 1 ? 1.0 : 0.0;
+
+    col += see * (1.0 - inFrame) * starField(sdir, t, pa);
 
     // Anillo de fotones: es la luz del mismo disco que dio vueltas al agujero, asi que hereda su
     // Doppler, su color y sus vetas. Pegado al borde de la sombra y cayendo hacia afuera; hacia
@@ -331,10 +413,10 @@ float4 mainImage(VertData v_in) : TARGET
     float angR = atan2(p.y, p.x);
     float nR = vnoise(float2((angR + rotA) * 24.0 / TAU, 3.0), 24.0);
     float wR = max(0.01 * bc, pxb);
-    float edge = 1.0 - shadow;
+    float edge = show_disk ? 1.0 - shadow : 0.0;            // sin disco no hay anillo ni halo
     float ring = edge * exp(-max(b - bc, 0.0) / wR);
     // La imagen de una vuelta menos: una linea mas tenue un poco hacia afuera
-    ring += 0.3 * exp(-pow((b - (bc + 4.0 * wR)) / (0.7 * wR), 2.0));
+    ring += 0.3 * edge * exp(-pow((b - (bc + 4.0 * wR)) / (0.7 * wR), 2.0));
     float3 ringCol = diskRamp(0.8 * gR);
     col += trans * ringCol * ring * disk_brightness * 1.4 * (gR * gR * gR) * (0.55 + 0.9 * nR);
 
@@ -343,11 +425,15 @@ float4 mainImage(VertData v_in) : TARGET
 
     // ---- Salida ----------------------------------------------------------------------------------
     col = filmic(col * exposure * 0.8);
-    col = pow(col, 1.0 / 2.2);
-    // Dithering triangular contra el banding, solo donde hay luz: el centro queda negro puro
+    // Dithering triangular contra el banding, solo donde hay luz del agujero: el centro queda negro
+    // puro y la escena sin tocar
     float2 px = v_in.uv * uv_size;
     float dither = (hash12(px) + hash12(px + 71.3) - 1.0) / 255.0;
-    float lit = max(col.r, max(col.g, col.b)) > 0.5 / 255.0 ? 1.0 : 0.0;
+    float lit = max(col.r, max(col.g, col.b)) > pow(0.5 / 255.0, 2.2) ? 1.0 : 0.0;
+    // La escena se suma en lineal, sin exposicion ni tone mapping
+    float sceneW = see * inFrame;
+    col = pow(col + pow(scene.rgb, 2.2) * sceneW, 1.0 / 2.2);
     col = saturate(col + dither * lit);
-    return float4(col, 1.0);
+    float alpha = saturate(scene.a * sceneW + (1.0 - sceneW));
+    return float4(col, alpha);
 }
